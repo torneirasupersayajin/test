@@ -9,7 +9,8 @@ import (
 )
 
 var (
-	ErrNotSkippable = errors.New("prompt not skippable")
+	ErrOperationCanceled = errors.New("Operation was canceled by the user")
+	ErrNotTTY            = errors.New("The input device is not a TTY")
 )
 
 type Password struct {
@@ -25,13 +26,16 @@ func (p *Password) SetMask(mask rune) {
 
 func (p Password) Prompt() ([]byte, error) {
 	fd := int(os.Stdin.Fd())
+	if !term.IsTerminal(fd) {
+		return nil, ErrNotTTY
+	}
 	state, err := term.MakeRaw(fd)
 	if err != nil {
 		return nil, err
 	}
 	defer term.Restore(fd, state)
-	ans := make([]byte, p.MinLen)
-	buf := make([]byte, 1)
+	ans := make([]byte, 0, p.MinLen)
+	buf := make([]byte, 0, 1)
 	for {
 		_, err := os.Stdin.Read(buf)
 		if err != nil {
@@ -41,7 +45,7 @@ func (p Password) Prompt() ([]byte, error) {
 		if b == 13 {
 			break
 		}
-		if b == 127 || b == 8 {
+		if b == 8 || b == 127 {
 			if len(ans) > 0 {
 				ans = ans[:len(ans)-1]
 				fmt.Print("\b \b")
@@ -52,7 +56,7 @@ func (p Password) Prompt() ([]byte, error) {
 			if p.Skippable {
 				return nil, nil
 			}
-			return nil, ErrNotSkippable
+			return nil, ErrOperationCanceled
 		}
 		if p.Mask != 0 {
 			fmt.Print(string(p.Mask))
