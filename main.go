@@ -14,10 +14,14 @@ var (
 	ErrNotTTY               = errors.New("The input device is not a TTY")
 )
 
+type RenderConfig struct {
+}
+
 type Password struct {
 	Message   string
 	Mask      rune
 	Skippable bool
+	RenderCfg any
 }
 
 func (p *Password) SetMask(mask rune) {
@@ -55,6 +59,7 @@ func (p Password) Prompt() ([]byte, error) {
 			continue
 		}
 		if b == 3 || b == 27 {
+			fmt.Print("\033[0;31mskipped")
 			if p.Skippable {
 				return nil, nil
 			}
