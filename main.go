@@ -9,14 +9,14 @@ import (
 )
 
 var (
-	ErrOperationCanceled = errors.New("Operation was canceled by the user")
-	ErrNotTTY            = errors.New("The input device is not a TTY")
+	ErrOperationCanceled    = errors.New("Operation was canceled by the user")
+	ErrOperationInterrupted = errors.New("Operation was interrupted by the user")
+	ErrNotTTY               = errors.New("The input device is not a TTY")
 )
 
 type Password struct {
+	Message   string
 	Mask      rune
-	MinLen    int
-	MaxLen    int
 	Skippable bool
 }
 
@@ -34,8 +34,9 @@ func (p Password) Prompt() ([]byte, error) {
 		return nil, err
 	}
 	defer term.Restore(fd, state)
-	ans := make([]byte, 0, p.MinLen)
-	buf := make([]byte, 0, 1)
+	fmt.Print(p.Message)
+	ans := make([]byte, 0)
+	buf := make([]byte, 1)
 	for {
 		_, err := os.Stdin.Read(buf)
 		if err != nil {
@@ -43,7 +44,8 @@ func (p Password) Prompt() ([]byte, error) {
 		}
 		b := buf[0]
 		if b == 13 {
-			break
+			fmt.Print("\r\n")
+			return ans, nil
 		}
 		if b == 8 || b == 127 {
 			if len(ans) > 0 {
@@ -52,16 +54,19 @@ func (p Password) Prompt() ([]byte, error) {
 			}
 			continue
 		}
-		if b == 3 || b == 24 || b == 27 {
+		if b == 3 || b == 27 {
 			if p.Skippable {
 				return nil, nil
 			}
-			return nil, ErrOperationCanceled
+			if b == 27 {
+				return nil, ErrOperationCanceled
+			}
+			return nil, ErrOperationInterrupted
 		}
 		if p.Mask != 0 {
 			fmt.Print(string(p.Mask))
 		}
 		ans = append(ans, b)
 	}
-	return ans, nil
+	panic("unreachable")
 }
