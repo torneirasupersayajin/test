@@ -22,6 +22,7 @@ type Password struct {
 	EnableVisibilityToggle bool
 	Mask                   rune
 	Skippable              bool
+	EnableArrowsNavigation bool
 }
 
 func (p *Password) SetMask(mask rune) {
@@ -39,28 +40,46 @@ func (p Password) Prompt() ([]byte, error) {
 	}
 	defer term.Restore(fd, state)
 	fmt.Print(p.Message)
-	ans := make([]byte, 0)
+	answer := make([]byte, 0)
 	buf := make([]byte, 6)
 	isVisible := p.StartsVisible
+	cursorPosition := 0
 	for {
 		n, err := os.Stdin.Read(buf)
 		if err != nil {
 			return nil, err
 		}
-		if slices.Equal(buf, []byte{8}) || slices.Equal(buf, []byte{27, 91, 51, 126}) {
-			if len(ans) > 0 {
+		seq := buf[:n]
+		if slices.Equal(seq, []byte{8}) || slices.Equal(seq, []byte{27, 91, 51, 126}) {
+			if len(answer) > 0 {
 				fmt.Print("\b \b")
-				ans = ans[:len(ans)-1]
+				answer = answer[:len(answer)-1]
 			}
 			continue
+		}
+		if p.EnableArrowsNavigation {
+			if slices.Equal(seq, []byte{27, 91, 68}) {
+				if cursorPosition > 0 {
+					fmt.Print("\x1b[D")
+					cursorPosition--
+				}
+				continue
+			}
+			if slices.Equal(seq, []byte{27, 91, 67}) {
+				if cursorPosition < len(answer) {
+					fmt.Print("\x1b[C")
+					cursorPosition++
+				}
+				continue
+			}
 		}
 		if n > 1 {
 			continue
 		}
-		b := buf[0]
+		b := seq[0]
 		if b == 13 {
 			fmt.Print("\r\n")
-			return ans, nil
+			return answer, nil
 		}
 		if b == 3 || b == 27 {
 			if p.Skippable {
@@ -74,11 +93,11 @@ func (p Password) Prompt() ([]byte, error) {
 		}
 		if b == 18 {
 			if p.EnableVisibilityToggle {
-				fmt.Print(strings.Repeat("\b \b", len(ans)))
+				fmt.Print(strings.Repeat("\b \b", len(answer)))
 				if isVisible {
-					fmt.Print(strings.Repeat(string(p.Mask), len(ans)))
+					fmt.Print(strings.Repeat(string(p.Mask), len(answer)))
 				} else {
-					fmt.Print(string(ans))
+					fmt.Print(string(answer))
 				}
 				isVisible = !isVisible
 			}
@@ -89,7 +108,8 @@ func (p Password) Prompt() ([]byte, error) {
 		} else {
 			fmt.Print(string(p.Mask))
 		}
-		ans = append(ans, b)
+		answer = append(answer[:cursorPosition], b)
+		cursorPosition++
 	}
 	panic("unreachable")
 }
