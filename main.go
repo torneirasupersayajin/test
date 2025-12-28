@@ -80,12 +80,11 @@ func (p Password) Prompt() ([]byte, error) {
 			if p.EnableVisibilityToggle {
 				fmt.Print(strings.Repeat("\b \b", len(ans)))
 				if isVisible {
-					isVisible = false
 					fmt.Print(strings.Repeat(string(p.Mask), len(ans)))
 				} else {
-					isVisible = true
 					fmt.Print(string(ans))
 				}
+				isVisible = !isVisible
 			}
 			continue
 		}
