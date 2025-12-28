@@ -45,7 +45,7 @@ func (p Password) Prompt() ([]byte, error) {
 	fmt.Print(p.Msg)
 	ans := make([]byte, 0)
 	buf := make([]byte, 6)
-	visible := p.StartsVisible
+	isVisible := p.StartsVisible
 	for {
 		n, err := os.Stdin.Read(buf)
 		if err != nil {
@@ -79,17 +79,17 @@ func (p Password) Prompt() ([]byte, error) {
 		if b == 18 {
 			if p.EnableVisibilityToggle {
 				fmt.Print(strings.Repeat("\b \b", len(ans)))
-				if visible {
-					visible = false
+				if isVisible {
+					isVisible = false
 					fmt.Print(strings.Repeat(string(p.Mask), len(ans)))
 				} else {
-					visible = true
+					isVisible = true
 					fmt.Print(string(ans))
 				}
 			}
 			continue
 		}
-		if visible {
+		if isVisible {
 			fmt.Print(string(b))
 		} else {
 			fmt.Print(string(p.Mask))
