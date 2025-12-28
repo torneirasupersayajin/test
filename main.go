@@ -15,17 +15,12 @@ var (
 	ErrNotTTY               = errors.New("The input device is not a TTY")
 )
 
-type RenderConfig struct {
-	PromptPrefix         rune
-	AnsweredPromptPrefix rune
-}
-
 type Password struct {
-	Msg                    string
+	Message                string
 	StartsVisible          bool
 	EnableVisibilityToggle bool
 	Mask                   rune
-	AllowSkip              bool
+	Skippable              bool
 }
 
 func (p *Password) SetMask(mask rune) {
@@ -42,7 +37,7 @@ func (p Password) Prompt() ([]byte, error) {
 		return nil, err
 	}
 	defer term.Restore(fd, state)
-	fmt.Print(p.Msg)
+	fmt.Print(p.Message)
 	ans := make([]byte, 0)
 	buf := make([]byte, 6)
 	isVisible := p.StartsVisible
@@ -60,7 +55,7 @@ func (p Password) Prompt() ([]byte, error) {
 			return ans, nil
 		}
 		if b == 3 || b == 27 {
-			if p.AllowSkip {
+			if p.Skippable {
 				return nil, nil
 			}
 			fmt.Print("\r\n")
