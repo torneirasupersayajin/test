@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"slices"
 	"strings"
 
 	"golang.org/x/term"
@@ -46,7 +47,14 @@ func (p Password) Prompt() ([]byte, error) {
 		if err != nil {
 			return nil, err
 		}
-		if n != 1 {
+		if slices.Equal(buf, []byte{8}) || slices.Equal(buf, []byte{27, 91, 51, 126}) {
+			if len(ans) > 0 {
+				fmt.Print("\b \b")
+				ans = ans[:len(ans)-1]
+			}
+			continue
+		}
+		if n > 1 {
 			continue
 		}
 		b := buf[0]
@@ -63,13 +71,6 @@ func (p Password) Prompt() ([]byte, error) {
 				return nil, ErrOperationCanceled
 			}
 			return nil, ErrOperationInterrupted
-		}
-		if b == 8 || b == 127 {
-			if len(ans) > 0 {
-				fmt.Print("\b \b")
-				ans = ans[:len(ans)-1]
-			}
-			continue
 		}
 		if b == 18 {
 			if p.EnableVisibilityToggle {
